@@ -1,0 +1,10 @@
+{
+  "name": "baaeed-mostaql-public-watcher",
+  "version": "1.0.0",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "watch": "node src/watch.mjs",
+    "test": "node --test test/watch.test.mjs"
+  }
+}

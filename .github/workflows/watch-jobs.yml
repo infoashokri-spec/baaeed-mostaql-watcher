@@ -1,0 +1,50 @@
+name: Monitor Baaeed and Mostaql
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: baaeed-mostaql-watcher
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out public repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test parsers
+        run: npm test
+
+      - name: Check platforms and notify Telegram
+        id: watcher
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          VERIFY_TELEGRAM: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+        run: npm run watch
+
+      - name: Persist changed link state
+        if: steps.watcher.outputs.state_changed == 'true'
+        run: |
+          git config user.name "job-watcher-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/state.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "chore: update watcher state [skip ci]"
+          git pull --rebase
+          git push
